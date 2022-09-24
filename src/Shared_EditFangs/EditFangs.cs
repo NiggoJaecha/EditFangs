@@ -17,8 +17,11 @@ namespace EditFangs
     [BepInDependency(KoikatuAPI.GUID, KoikatuAPI.VersionConst)]
     public class EditFangs : BaseUnityPlugin
     {
-        //plugin
+#if KK
+        public const string PluginName = "KK_EditFangs";
+#elif KKS
         public const string PluginName = "KKS_EditFangs";
+#endif
         public const string GUID = "org.njaecha.plugins.editfangs";
         public const string Version = "1.1.0";
 
