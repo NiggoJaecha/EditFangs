@@ -10,7 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)AssemblyInfo.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)EditFangs.CharacterController.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)EditFangs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EditFangsController.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EditFangsPlugin.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FangData.cs" />
   </ItemGroup>
 </Project>
