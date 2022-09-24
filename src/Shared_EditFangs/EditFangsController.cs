@@ -40,9 +40,8 @@ namespace EditFangs
 
         internal void registerFangs()
         {
-            var fangs = ChaControl.transform.Find(
-                "BodyTop/p_cf_body_bone/cf_j_root/cf_n_height/cf_j_hips/cf_j_spine01/cf_j_spine02/cf_j_spine03/cf_j_neck/cf_j_head/cf_s_head/p_cf_head_bone/ct_head/N_tonn_face/N_cf_haed/cf_O_canine").gameObject;
-            Mesh mesh = fangs.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+            var fangs = ChaControl.objHead?.transform.Find("N_tonn_face/N_cf_haed/cf_O_canine")?.gameObject;
+            Mesh mesh = fangs?.GetComponentInChildren<SkinnedMeshRenderer>()?.sharedMesh;
             if (mesh == null) return;
             float lowestY = 100;
             List<int> tipI = new List<int>();
