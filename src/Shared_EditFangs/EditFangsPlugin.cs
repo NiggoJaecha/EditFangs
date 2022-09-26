@@ -15,15 +15,18 @@ namespace EditFangs
 {
     [BepInPlugin(GUID, PluginName, Version)]
     [BepInDependency(KoikatuAPI.GUID, KoikatuAPI.VersionConst)]
-    public class EditFangs : BaseUnityPlugin
+    public class EditFangsPlugin : BaseUnityPlugin
     {
-        //plugin
+#if KK
+        public const string PluginName = "KK_EditFangs";
+#elif KKS
         public const string PluginName = "KKS_EditFangs";
+#endif
         public const string GUID = "org.njaecha.plugins.editfangs";
         public const string Version = "1.1.0";
 
         internal new static ManualLogSource Logger;
-        internal static EditFangs Instance;
+        internal static EditFangsPlugin Instance;
 
         internal static MakerSlider fangSizeSliderL;
         internal static MakerSlider fangSizeSliderR;
@@ -32,18 +35,18 @@ namespace EditFangs
 
         void Awake()
         {
-            EditFangs.Logger = base.Logger;
-            EditFangs.Instance = this;
-            CharacterApi.RegisterExtraBehaviour<CharacterController>(GUID);
+            EditFangsPlugin.Logger = base.Logger;
+            EditFangsPlugin.Instance = this;
+            CharacterApi.RegisterExtraBehaviour<EditFangsController>(GUID);
             MakerAPI.RegisterCustomSubCategories += RegisterCustomSubCategories;
         }
 
         private static void RegisterCustomSubCategories(object sender, RegisterSubCategoriesEvent e)
         {
-            fangSizeSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Length", 0f, 1f, 0.1f, EditFangs.Instance));
-            fangSpacingSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Spacing", 0f, 1.3f, 1f, EditFangs.Instance));
-            fangSizeSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Length", 0f, 1f, 0.1f, EditFangs.Instance));
-            fangSpacingSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Spacing", 0f, 1.3f, 1f, EditFangs.Instance));
+            fangSizeSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance));
+            fangSpacingSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance));
+            fangSizeSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance));
+            fangSpacingSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance));
             fangSizeSliderL.ValueChanged.Subscribe(i => adjustFangMaker(i, fangSpacingSliderL.Value, fangSizeSliderR.Value, fangSpacingSliderR.Value));
             fangSizeSliderR.ValueChanged.Subscribe(i => adjustFangMaker(fangSizeSliderL.Value, fangSpacingSliderL.Value, i, fangSpacingSliderR.Value));
             fangSpacingSliderL.ValueChanged.Subscribe(i => adjustFangMaker(fangSizeSliderL.Value, i, fangSizeSliderR.Value, fangSpacingSliderR.Value, true));
@@ -54,12 +57,12 @@ namespace EditFangs
 
         public static void adjustFangMaker(float scaleL, float spacingL, float scaleR, float spacingR, bool readjust = false)
         {
-            MakerAPI.GetCharacterControl().GetComponent<CharacterController>().adjustFang(scaleL, spacingL, scaleR, spacingR, readjust);
+            MakerAPI.GetCharacterControl().GetComponent<EditFangsController>().adjustFang(scaleL, spacingL, scaleR, spacingR, readjust);
         }
 
         private static void registerFangs()
         {
-            MakerAPI.GetCharacterControl().GetComponent<CharacterController>().registerFangs();
+            MakerAPI.GetCharacterControl().GetComponent<EditFangsController>().registerFangs();
         }
     }
 }
