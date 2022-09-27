@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 using BepInEx.Logging;
 using KKAPI;
@@ -9,6 +7,7 @@ using KKAPI.Chara;
 using ExtensibleSaveFormat;
 using MessagePack;
 using System.Collections;
+using KKAPI.Utilities;
 
 namespace EditFangs
 {
@@ -19,7 +18,6 @@ namespace EditFangs
         internal Vector3[] fangsBaseVertices = new Vector3[42];
         internal Vector3[] fangsBaseNormals = new Vector3[42];
         private bool registered = false;
-        private bool loaded = false;
         public FangData fangData = new FangData();
         private int[] tips = new int[2];
         private int[] rotp = new int[2];
@@ -28,19 +26,12 @@ namespace EditFangs
         protected override void Start()
         {
             base.Start();
-            if (!loaded)
-            {
-                if (fangData.scaleL == 0) fangData.scaleL = 0.1f;
-                if (fangData.scaleR == 0) fangData.scaleR = 0.1f;
-                if (fangData.spacingL == 0) fangData.spacingL = 1f;
-                if (fangData.spacingR == 0) fangData.spacingR = 1f;
-            }
             registerFangs();
         }
 
         internal void registerFangs()
         {
-            var fangs = ChaControl.objHead?.transform.Find("N_tonn_face/N_cf_haed/cf_O_canine")?.gameObject;
+            GameObject fangs = GetFangsObj();
             Mesh mesh = fangs?.GetComponentInChildren<SkinnedMeshRenderer>()?.sharedMesh;
             if (mesh == null) return;
             float lowestY = 100;
@@ -70,75 +61,54 @@ namespace EditFangs
             registered = true;
         }
 
-        protected override void OnCoordinateBeingLoaded(ChaFileCoordinate coordinate)
-        {
-            base.OnCoordinateBeingLoaded(coordinate);
-        }
-
-        protected override void OnCoordinateBeingSaved(ChaFileCoordinate coordinate)
-        {
-            base.OnCoordinateBeingSaved(coordinate);
-        }
-
         protected override void OnCardBeingSaved(GameMode currentGameMode)
         {
-            PluginData data = new PluginData();
+            if (fangData.IsDefault())
+            {
+                SetExtendedData(null);
+            }
+            else
+            {
+                PluginData data = new PluginData();
 
-            data.data.Add("fangData", MessagePackSerializer.Serialize<FangData>(fangData));
+                data.data.Add("fangData", MessagePackSerializer.Serialize<FangData>(fangData));
 
-            Logger.LogDebug($"Saving extended data for {ChaControl.chaFile.parameter.fullname}: ({fangData.scaleL} | {fangData.spacingL} | {fangData.scaleR} | {fangData.spacingR})");
+                Logger.LogDebug($"Saving extended data for {ChaControl.chaFile.parameter.fullname}: ({fangData.scaleL} | {fangData.spacingL} | {fangData.scaleR} | {fangData.spacingR})");
 
-            SetExtendedData(data);
+                SetExtendedData(data);
+            }
         }
 
         protected override void OnReload(GameMode currentGameMode, Boolean maintainState)
         {
             var data = GetExtendedData();
-            if (data == null && currentGameMode == GameMode.Maker)
+            if (data == null)
             {
-                EditFangsPlugin.fangSizeSliderL.SetValue(0.1f);
-                EditFangsPlugin.fangSizeSliderR.SetValue(0.1f);
-                EditFangsPlugin.fangSpacingSliderL.SetValue(1f);
-                EditFangsPlugin.fangSpacingSliderR.SetValue(1f);
+                fangData.Reset();
                 return;
             }
-            if (data == null) return;
+
+            GameObject fangs = GetFangsObj();
+            Mesh mesh = fangs?.GetComponentInChildren<SkinnedMeshRenderer>()?.sharedMesh;
+
+            if (mesh == null)
+            {
+                Logger.LogDebug($"Failed to load extended data for {ChaControl.chaFile.parameter.fullname} - mesh not found");
+                return;
+            }
 
             Logger.LogDebug($"Loading extended data for {ChaControl.chaFile.parameter.fullname}");
 
             // clone the loaded mesh to make sure that it's mesh is not shared with other characters
-            var fangs = ChaControl.transform.Find(
-                "BodyTop/p_cf_body_bone/cf_j_root/cf_n_height/cf_j_hips/cf_j_spine01/cf_j_spine02/cf_j_spine03/cf_j_neck/cf_j_head/cf_s_head/p_cf_head_bone/ct_head/N_tonn_face/N_cf_haed/cf_O_canine").gameObject;
             fangs.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh = (Mesh)Instantiate(fangs.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh);
-
-            FangData newfangData = new FangData();
 
             if (data.data.TryGetValue("fangData", out var fangDataSerialised) && fangDataSerialised != null)
             {
-                newfangData = MessagePackSerializer.Deserialize<FangData>((byte[])fangDataSerialised);
+                fangData = MessagePackSerializer.Deserialize<FangData>((byte[])fangDataSerialised) ?? fangData;
             }
-            if (currentGameMode == GameMode.Maker)
-            {
-                float scaleL = newfangData.scaleL;
-                float scaleR = newfangData.scaleR;
-                float spacingL = newfangData.spacingL;
-                float spacingR = newfangData.spacingR;
-                EditFangsPlugin.fangSizeSliderL.SetValue(scaleL);
-                EditFangsPlugin.fangSizeSliderR.SetValue(scaleR);
-                EditFangsPlugin.fangSpacingSliderL.SetValue(spacingL);
-                EditFangsPlugin.fangSpacingSliderR.SetValue(spacingR);
-            }
-            else
-            {
-                fangData.scaleL = newfangData.scaleL;
-                fangData.scaleR = newfangData.scaleR;
-                fangData.spacingL = newfangData.spacingL;
-                fangData.spacingR = newfangData.spacingR;
-            }
-            loaded = true;
-            StartCoroutine(adjustFang(0.5f, true));
-        }
 
+            StartCoroutine(fixFangAdjustmentCo());
+        }
 
         /// <summary>
         /// Adjusts the fang's mesh according to the parameters
@@ -151,10 +121,10 @@ namespace EditFangs
         public void adjustFang(float scaleL, float spacingL, float scaleR, float spacingR, bool readjust = false)
         {
             if (!registered) return;
-            var fangs = ChaControl.transform.Find(
-                "BodyTop/p_cf_body_bone/cf_j_root/cf_n_height/cf_j_hips/cf_j_spine01/cf_j_spine02/cf_j_spine03/cf_j_neck/cf_j_head/cf_s_head/p_cf_head_bone/ct_head/N_tonn_face/N_cf_haed/cf_O_canine").gameObject;
-            if (fangs == null) return;
-            Mesh mesh = fangs.GetComponentInChildren<SkinnedMeshRenderer>().sharedMesh;
+
+            GameObject fangs = GetFangsObj();
+            Mesh mesh = fangs?.GetComponentInChildren<SkinnedMeshRenderer>()?.sharedMesh;
+            if (mesh == null) return;
             if (mesh.vertexCount != 42) return;
 
             if (KoikatuAPI.GetCurrentGameMode() != GameMode.Maker) //dont spam the log to hard
@@ -244,16 +214,16 @@ namespace EditFangs
         {
             adjustFang(newFangData.scaleL, newFangData.spacingL, newFangData.scaleR, newFangData.spacingR, readjust);
         }
-        /// <summary>
-        /// Adjusts the fang's mesh according to the current fangData
-        /// </summary>
-        /// <param name="delay">Delay in seconds</param>
-        /// <param name="readjust">Whenever the fang should be adjusted twice (fixes glitchy rotation)</param>
-        /// <returns></returns>
-        IEnumerator adjustFang(float delay, bool readjust = false)
+
+        IEnumerator fixFangAdjustmentCo()
         {
-            yield return new WaitForSeconds(delay);
-            adjustFang(fangData, readjust);
+            yield return CoroutineUtils.WaitForEndOfFrame;
+            yield return CoroutineUtils.WaitForEndOfFrame;
+            // Brute force needed to make the algorithm convene on a point after a major value change
+            // todo fix the algorithm instead?
+            adjustFang(fangData, true);
+            adjustFang(fangData, true);
+            adjustFang(fangData, true);
         }
         /// <summary>
         /// Adjusts the fang's mesh according to the current fangData
@@ -261,6 +231,12 @@ namespace EditFangs
         public void adjustFang()
         {
             adjustFang(fangData);
+        }
+
+        private GameObject GetFangsObj()
+        {
+            var fangs = ChaControl.objHead?.transform.Find("N_tonn_face/N_cf_haed/cf_O_canine")?.gameObject;
+            return fangs;
         }
     }
 }

@@ -23,15 +23,10 @@ namespace EditFangs
         public const string PluginName = "KKS_EditFangs";
 #endif
         public const string GUID = "org.njaecha.plugins.editfangs";
-        public const string Version = "1.1.0";
+        public const string Version = "1.1.2";
 
         internal new static ManualLogSource Logger;
         internal static EditFangsPlugin Instance;
-
-        internal static MakerSlider fangSizeSliderL;
-        internal static MakerSlider fangSizeSliderR;
-        internal static MakerSlider fangSpacingSliderL;
-        internal static MakerSlider fangSpacingSliderR;
 
         void Awake()
         {
@@ -43,21 +38,27 @@ namespace EditFangs
 
         private static void RegisterCustomSubCategories(object sender, RegisterSubCategoriesEvent e)
         {
-            fangSizeSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance));
-            fangSpacingSliderL = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance));
-            fangSizeSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance));
-            fangSpacingSliderR = e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance));
-            fangSizeSliderL.ValueChanged.Subscribe(i => adjustFangMaker(i, fangSpacingSliderL.Value, fangSizeSliderR.Value, fangSpacingSliderR.Value));
-            fangSizeSliderR.ValueChanged.Subscribe(i => adjustFangMaker(fangSizeSliderL.Value, fangSpacingSliderL.Value, i, fangSpacingSliderR.Value));
-            fangSpacingSliderL.ValueChanged.Subscribe(i => adjustFangMaker(fangSizeSliderL.Value, i, fangSizeSliderR.Value, fangSpacingSliderR.Value, true));
-            fangSpacingSliderR.ValueChanged.Subscribe(i => adjustFangMaker(fangSizeSliderL.Value, fangSpacingSliderL.Value, fangSizeSliderR.Value, i, true));
+            e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance))
+             .BindToFunctionController<EditFangsController, float>(
+                 controller => controller.fangData.scaleL, 
+                 (controller, value) => controller.adjustFang(value, controller.fangData.spacingL, controller.fangData.scaleR, controller.fangData.spacingR));
+
+            e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Left Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance))
+             .BindToFunctionController<EditFangsController, float>(
+                 controller => controller.fangData.spacingL, 
+                 (controller, value) => controller.adjustFang(controller.fangData.scaleL, value, controller.fangData.scaleR, controller.fangData.spacingR, true));
+            
+            e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Length", 0f, 1f, 0.1f, EditFangsPlugin.Instance))
+             .BindToFunctionController<EditFangsController, float>(
+                 controller => controller.fangData.scaleR, 
+                 (controller, value) => controller.adjustFang(controller.fangData.scaleL, controller.fangData.spacingL, value, controller.fangData.spacingR));
+            
+            e.AddControl(new MakerSlider(MakerConstants.Face.Mouth, "Right Fang Spacing", 0f, 1.3f, 1f, EditFangsPlugin.Instance))
+             .BindToFunctionController<EditFangsController, float>(
+                 controller => controller.fangData.spacingR, 
+                 (controller, value) => controller.adjustFang(controller.fangData.scaleL, controller.fangData.spacingL, controller.fangData.scaleR, value, true));
 
             Singleton<ChaCustom.CustomBase>.Instance.actUpdateCvsMouth += registerFangs;
-        }
-
-        public static void adjustFangMaker(float scaleL, float spacingL, float scaleR, float spacingR, bool readjust = false)
-        {
-            MakerAPI.GetCharacterControl().GetComponent<EditFangsController>().adjustFang(scaleL, spacingL, scaleR, spacingR, readjust);
         }
 
         private static void registerFangs()
